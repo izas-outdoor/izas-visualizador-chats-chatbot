@@ -1,13 +1,12 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from './supabaseClient'
 
-export default function ChatViewer({ sessionId }) {
+// Aceptamos 'className' para controlar la apertura en móvil desde el padre
+export default function ChatViewer({ sessionId, onBack, className }) {
   const [messages, setMessages] = useState([])
-  const [currentSession, setCurrentSession] = useState(null) // Para mostrar datos en el header
   const bottomRef = useRef(null)
 
   const fetchConversation = useCallback(async () => {
-    // Traemos también la categoría para mostrarla en el header
     const { data, error } = await supabase
       .from('chat_sessions')
       .select('conversation, category, session_id') 
@@ -16,7 +15,6 @@ export default function ChatViewer({ sessionId }) {
 
     if (!error && data) {
       setMessages(data.conversation || [])
-      setCurrentSession(data)
     }
   }, [sessionId])
 
@@ -26,29 +24,52 @@ export default function ChatViewer({ sessionId }) {
     }
   }, [sessionId, fetchConversation])
 
-  // Scroll automático al cambiar los mensajes
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Helper para convertir texto plano con URLs en enlaces clicables
+  const renderMessageContent = (text) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.split(urlRegex).map((part, i) => {
+      if (part.match(urlRegex)) {
+        return <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a>;
+      }
+      return part;
+    });
+  };
+
   if (!sessionId) {
+    // En móvil, si no hay sesión, este componente está oculto por CSS, 
+    // así que no importa mucho lo que renderice, pero en escritorio se ve el mensaje.
     return (
-      <div className="chat-viewer" style={{ justifyContent: 'center', alignItems: 'center' }}>
+      <div className={`chat-viewer ${className || ''}`} style={{ justifyContent: 'center', alignItems: 'center' }}>
         <div className="empty">Selecciona un chat para comenzar</div>
       </div>
     )
   }
 
   return (
-    <div className="chat-viewer">
-      {/* NUEVO: Sticky Header */}
+    // Aplicamos la clase que viene desde App.jsx (mobile-open)
+    <div className={`chat-viewer ${className || ''}`}>
+      
+      {/* Sticky Header */}
       <div className="chat-header">
-        <div>
-           {/* Usamos monospace aquí también para consistencia */}
-          <h2 style={{ fontFamily: 'monospace', fontSize: '13px', color: '#1a4f36' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          
+          {/* BOTÓN ATRÁS (Solo visible en móvil por CSS) */}
+          <button onClick={onBack} className="back-button">
+            ←
+          </button>
+
+          <h2 style={{ fontFamily: 'monospace', fontSize: '13px', color: '#64748b' }}>
             ID: {sessionId}
           </h2>
         </div>
+        
+        {/* Aquí podrías poner botones de acción extra si quisieras */}
+        <div></div> 
       </div>
 
       <div className="messages-container">
@@ -58,11 +79,10 @@ export default function ChatViewer({ sessionId }) {
             className={`message ${msg.role === 'user' ? 'user' : 'assistant'}`}
           >
             <div className="bubble">
-              {msg.content}
+              {renderMessageContent(msg.content)}
             </div>
           </div>
         ))}
-        {/* CORRECCIÓN: El ref va en un div vacío AL FINAL de la lista, no en cada mensaje */}
         <div ref={bottomRef} />
       </div>
     </div>

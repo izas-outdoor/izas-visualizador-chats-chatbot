@@ -1,17 +1,27 @@
 import { useState } from 'react'
 import ChatList from './ChatList'
 import ChatViewer from './ChatViewer'
+import './App.css' // Asegúrate de importar tu CSS
 
 export default function App() {
-  const [selectedSession, setSelectedSession] = useState(null)
+  // Corregido: Usamos 'selectedId' consistentemente
+  const [selectedId, setSelectedId] = useState(null)
 
   return (
     <div className="layout">
       <ChatList
-        selectedId={selectedSession}
-        onSelect={setSelectedSession}
+        onSelect={(id) => setSelectedId(id)}
+        selectedId={selectedId}
       />
-      <ChatViewer sessionId={selectedSession} />
+
+      {/* Pasamos la clase 'mobile-open' como prop en lugar de envolverlo en un div extra.
+        Esto mantiene el CSS Grid/Flexbox limpio.
+      */}
+      <ChatViewer
+        sessionId={selectedId}
+        onBack={() => setSelectedId(null)}
+        className={selectedId ? 'mobile-open' : ''}
+      />
     </div>
   )
 }
