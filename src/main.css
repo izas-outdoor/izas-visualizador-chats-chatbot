@@ -1,0 +1,374 @@
+:root {
+  /* --- PALETA IZAS (Basada en tu widget) --- */
+  --brand-dark: #0D2B1D;
+  /* Verde oscuro principal */
+  --brand-light: #8edfae;
+  /* Verde claro texto/detalles */
+  --brand-accent: #2ecc71;
+  /* Verde brillante (Online/Activo) */
+  --brand-hover: #1a4f36;
+  /* Verde un poco más claro para hovers */
+
+  /* --- SIDEBAR (Oscuro para contraste) --- */
+  --sidebar-bg: var(--brand-dark);
+  --sidebar-border: #1a4f36;
+  --sidebar-text: #ffffff;
+  --sidebar-muted: #8edfae;
+  /* Usamos el verde claro para textos secundarios */
+
+  /* --- ÁREA DE CHAT (Claro para simular el widget) --- */
+  --chat-bg: #f0f2f5;
+  /* Fondo gris del widget */
+  --chat-header-bg: #ffffff;
+  --text-dark: #333333;
+  /* Texto general en fondo claro */
+
+  /* --- BURBUJAS (Idénticas al widget) --- */
+  --msg-user-bg: var(--brand-dark);
+  --msg-user-text: #ffffff;
+  --msg-bot-bg: #ffffff;
+  --msg-bot-text: #333333;
+
+  /* --- BADGES --- */
+  --badge-urgent-bg: #fee2e2;
+  --badge-urgent-text: #ef4444;
+  --badge-general-bg: rgba(142, 223, 174, 0.2);
+  /* Verde marca transparente */
+  --badge-general-text: #8edfae;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--sidebar-bg);
+  /* Fondo base oscuro */
+  height: 100vh;
+  overflow: hidden;
+}
+
+.layout {
+  display: grid;
+  /* CAMBIO IMPORTANTE: */
+  grid-template-columns: 320px minmax(0, 1fr);
+  height: 100vh;
+  width: 100vw;
+  /* Aseguramos que el layout ocupe toda la ventana */
+  overflow: hidden;
+  /* Evitamos scroll en el layout principal */
+}
+
+/* ───── SCROLLBARS (Estilo Widget) ───── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ───── SIDEBAR (La lista de chats) ───── */
+.chat-list {
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-item {
+  padding: 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--sidebar-border);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.chat-item:hover {
+  background: var(--brand-hover);
+}
+
+.chat-item.active {
+  background: var(--brand-hover);
+  border-left: 4px solid var(--brand-accent);
+}
+
+.chat-id {
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 11px;
+  color: var(--sidebar-muted);
+  /* Verde claro */
+  margin-bottom: 6px;
+  opacity: 0.8;
+}
+
+.chat-preview {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sidebar-text);
+  /* Blanco */
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--sidebar-muted);
+}
+
+/* ───── CHAT VIEWER (El panel derecho) ───── */
+.chat-viewer {
+  background: var(--chat-bg);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: relative;
+
+  /* AÑADE ESTO: */
+  width: 100%;
+  min-width: 0;
+  /* Permite que flexbox encoja los hijos si es necesario */
+}
+
+/* HEADER DEL CHAT */
+.chat-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e5e5;
+  background: var(--chat-header-bg);
+  color: var(--text-dark);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+/* HEADER DE LA BARRA LATERAL (Con filtro) */
+.sidebar-header {
+  padding: 16px;
+  background-color: var(--sidebar-bg);
+  /* Mismo fondo que la barra */
+  border-bottom: 1px solid var(--sidebar-border);
+  position: sticky;
+  /* SE QUEDA FIJO AL HACER SCROLL */
+  top: 0;
+  z-index: 20;
+  /* Por encima de la lista */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidebar-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  margin: 0;
+}
+
+/* Contenedor de los filtros para que tengan espacio entre ellos */
+.sidebar-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* Espacio entre buscador, fecha y categoría */
+  margin-top: 10px;
+}
+
+/* Estilo unificado para Inputs y Selects */
+.sidebar-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.05);
+  /* Fondo oscuro translúcido */
+  border: 1px solid var(--sidebar-border);
+  color: var(--sidebar-muted);
+  /* Tu verde claro */
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.sidebar-input:focus {
+  border-color: var(--brand-accent);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-input::placeholder {
+  color: rgba(142, 223, 174, 0.5);
+  /* Verde claro muy suave */
+}
+
+/* Ajuste específico para el selector (para mantener tu flecha custom si la tenías) */
+select.sidebar-input {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238edfae' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+}
+
+/* Las opciones del select en VERDE OSCURO (como pediste) */
+select.sidebar-input option {
+  background-color: white;
+  color: #0D2B1D;
+  font-weight: 500;
+  padding: 10px;
+}
+
+/* Ajuste para el input de fecha en navegadores Webkit (Chrome/Edge) para que el icono sea claro */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  /* Vuelve el icono del calendario blanco */
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+/* SELECTOR DE FILTRO ESTILIZADO */
+.filter-select {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.05);
+  /* Fondo sutil */
+  border: 1px solid var(--sidebar-border);
+  color: var(--sidebar-muted);
+  /* Verde claro texto */
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  /* Para quitar el estilo por defecto del navegador */
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238edfae' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+}
+
+.filter-select option {
+  background-color: white;
+  /* Fondo blanco limpio */
+  color: #0D2B1D;
+  /* Texto VERDE OSCURO (Tu color corporativo) */
+  font-weight: 500;
+  padding: 10px;
+}
+
+.filter-select:hover {
+  border-color: var(--brand-light);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.filter-select:focus {
+  border-color: var(--brand-accent);
+}
+
+.chat-header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-family: monospace;
+  color: #64748b;
+}
+
+.messages-container {
+  padding: 24px;
+  overflow-y: auto;
+  /* Scroll vertical */
+  overflow-x: hidden;
+  /* Prohibido scroll horizontal */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  /* Que ocupe todo el ancho disponible */
+}
+
+.empty {
+  color: #999;
+  font-size: 14px;
+}
+
+/* ───── MENSAJES (Estilo Burbujas Widget) ───── */
+.message {
+  display: flex;
+  width: 100%;
+}
+
+.message.user {
+  justify-content: flex-end;
+}
+
+.bubble {
+  max-width: 65%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.4;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Burbuja Usuario (Agente o Cliente externo) */
+.message.user .bubble {
+  background: var(--msg-user-bg);
+  /* Verde oscuro #0D2B1D */
+  color: var(--msg-user-text);
+  border-bottom-right-radius: 4px;
+}
+
+/* Burbuja Asistente/Bot */
+.message.assistant .bubble {
+  background: var(--msg-bot-bg);
+  /* Blanco */
+  color: var(--msg-bot-text);
+  border-bottom-left-radius: 4px;
+  border: 1px solid #e5e5e5;
+}
+
+/* ───── BADGES ───── */
+.badge {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge.general {
+  background: var(--badge-general-bg);
+  color: var(--badge-general-text);
+  border: 1px solid var(--sidebar-muted);
+}
+
+.badge.urgent {
+  background: var(--badge-urgent-bg);
+  color: var(--badge-urgent-text);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
