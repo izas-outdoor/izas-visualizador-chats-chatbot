@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from './supabaseClient'
 
-// Aceptamos 'className' para controlar la apertura en móvil desde el padre
 export default function ChatViewer({ sessionId, onBack, className }) {
   const [messages, setMessages] = useState([])
   const bottomRef = useRef(null)
@@ -9,7 +8,7 @@ export default function ChatViewer({ sessionId, onBack, className }) {
   const fetchConversation = useCallback(async () => {
     const { data, error } = await supabase
       .from('chat_sessions')
-      .select('conversation, category, session_id') 
+      .select('conversation') 
       .eq('session_id', sessionId)
       .single()
 
@@ -19,30 +18,34 @@ export default function ChatViewer({ sessionId, onBack, className }) {
   }, [sessionId])
 
   useEffect(() => {
-    if (sessionId) {
-      fetchConversation()
-    }
+    if (sessionId) fetchConversation()
   }, [sessionId, fetchConversation])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Helper para convertir texto plano con URLs en enlaces clicables
+  // --- FUNCIÓN PARA FORMATEAR LA HORA ---
+  const formatTime = (isoString) => {
+    if (!isoString) return null;
+    const date = new Date(isoString);
+    // Esto convierte la hora UTC a la hora local del navegador (España)
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Detectar enlaces
   const renderMessageContent = (text) => {
     if (!text) return null;
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     return text.split(urlRegex).map((part, i) => {
       if (part.match(urlRegex)) {
-        return <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a>;
+        return <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{textDecoration: 'underline'}}>{part}</a>;
       }
       return part;
     });
   };
 
   if (!sessionId) {
-    // En móvil, si no hay sesión, este componente está oculto por CSS, 
-    // así que no importa mucho lo que renderice, pero en escritorio se ve el mensaje.
     return (
       <div className={`chat-viewer ${className || ''}`} style={{ justifyContent: 'center', alignItems: 'center' }}>
         <div className="empty">Selecciona un chat para comenzar</div>
@@ -51,25 +54,14 @@ export default function ChatViewer({ sessionId, onBack, className }) {
   }
 
   return (
-    // Aplicamos la clase que viene desde App.jsx (mobile-open)
     <div className={`chat-viewer ${className || ''}`}>
-      
-      {/* Sticky Header */}
       <div className="chat-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          
-          {/* BOTÓN ATRÁS (Solo visible en móvil por CSS) */}
-          <button onClick={onBack} className="back-button">
-            ←
-          </button>
-
+          <button onClick={onBack} className="back-button">←</button>
           <h2 style={{ fontFamily: 'monospace', fontSize: '13px', color: '#64748b' }}>
             ID: {sessionId}
           </h2>
         </div>
-        
-        {/* Aquí podrías poner botones de acción extra si quisieras */}
-        <div></div> 
       </div>
 
       <div className="messages-container">
@@ -79,7 +71,17 @@ export default function ChatViewer({ sessionId, onBack, className }) {
             className={`message ${msg.role === 'user' ? 'user' : 'assistant'}`}
           >
             <div className="bubble">
-              {renderMessageContent(msg.content)}
+              {/* Contenido del mensaje */}
+              <div className="message-text">
+                {renderMessageContent(msg.content)}
+              </div>
+              
+              {/* --- HORA DEL MENSAJE (Si existe) --- */}
+              {msg.timestamp && (
+                <div className="message-time">
+                  {formatTime(msg.timestamp)}
+                </div>
+              )}
             </div>
           </div>
         ))}
