@@ -25,15 +25,42 @@ export default function ChatViewer({ sessionId, onBack, className }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // --- FUNCIÓN PARA FORMATEAR LA HORA ---
+  // --- HELPER 1: Formatear Hora (14:30) ---
   const formatTime = (isoString) => {
     if (!isoString) return null;
-    const date = new Date(isoString);
-    // Esto convierte la hora UTC a la hora local del navegador (España)
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
-  // Detectar enlaces
+  // --- HELPER 2: Calcular etiqueta del día (Hoy, Ayer, Fecha) ---
+  const getDateLabel = (isoString) => {
+    if (!isoString) return null;
+    const date = new Date(isoString);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    // Comprobamos si es HOY
+    if (date.toDateString() === today.toDateString()) {
+      return 'Hoy';
+    }
+    // Comprobamos si es AYER
+    if (date.toDateString() === yesterday.toDateString()) {
+      return 'Ayer';
+    }
+    // Si no, devolvemos la fecha completa (ej: 10/02/2026)
+    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  // --- HELPER 3: ¿Son días diferentes? ---
+  const isDifferentDay = (currentIso, prevIso) => {
+    if (!currentIso) return false; // Si no tiene fecha, no ponemos separador
+    if (!prevIso) return true; // Si es el primero y tiene fecha, sí ponemos
+
+    const currentDate = new Date(currentIso).toDateString();
+    const prevDate = new Date(prevIso).toDateString();
+    return currentDate !== prevDate;
+  }
+
   const renderMessageContent = (text) => {
     if (!text) return null;
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -65,26 +92,36 @@ export default function ChatViewer({ sessionId, onBack, className }) {
       </div>
 
       <div className="messages-container">
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`message ${msg.role === 'user' ? 'user' : 'assistant'}`}
-          >
-            <div className="bubble">
-              {/* Contenido del mensaje */}
-              <div className="message-text">
-                {renderMessageContent(msg.content)}
-              </div>
+        {messages.map((msg, i) => {
+          // LÓGICA DEL SEPARADOR DE FECHA
+          const showDateSeparator = isDifferentDay(msg.timestamp, messages[i - 1]?.timestamp);
+          const dateLabel = showDateSeparator ? getDateLabel(msg.timestamp) : null;
+
+          return (
+            <div key={i} style={{ width: '100%' }}>
               
-              {/* --- HORA DEL MENSAJE (Si existe) --- */}
-              {msg.timestamp && (
-                <div className="message-time">
-                  {formatTime(msg.timestamp)}
+              {/* --- AQUÍ VA EL SEPARADOR DE DÍA --- */}
+              {showDateSeparator && dateLabel && (
+                <div className="date-separator">
+                  <span>{dateLabel}</span>
                 </div>
               )}
+
+              <div className={`message ${msg.role === 'user' ? 'user' : 'assistant'}`}>
+                <div className="bubble">
+                  <div className="message-text">
+                    {renderMessageContent(msg.content)}
+                  </div>
+                  {msg.timestamp && (
+                    <div className="message-time">
+                      {formatTime(msg.timestamp)}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
         <div ref={bottomRef} />
       </div>
     </div>
