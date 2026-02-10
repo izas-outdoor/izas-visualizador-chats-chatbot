@@ -332,8 +332,31 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   overflow-wrap: break-word;
   word-wrap: break-word;
   word-break: break-word;
+  display:flex;
+  flex-direction:column;
+  min-width:80px;
+}
+.message-text {
+    margin-bottom: 2px; /* Un pelín de espacio antes de la hora */
 }
 
+/* Estilo de la hora */
+.message-time {
+    font-size: 10px;      /* Texto pequeñito */
+    align-self: flex-end; /* Alineado a la derecha */
+    margin-top: 2px;
+    line-height: 1;
+}
+
+/* Color de hora en mensaje USUARIO (Fondo verde oscuro) */
+.message.user .message-time {
+    color: rgba(255, 255, 255, 0.6); /* Blanco semitransparente */
+}
+
+/* Color de hora en mensaje ASISTENTE (Fondo blanco) */
+.message.assistant .message-time {
+    color: #9ca3af; /* Gris suave */
+}
 /* Burbuja Usuario (Agente o Cliente externo) */
 .message.user .bubble {
   background: var(--msg-user-bg);
@@ -458,4 +481,5 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     background: var(--brand-hover);
     /* Solo mantenemos el activo */
   }
+
 }
