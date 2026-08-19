@@ -3,6 +3,7 @@ import { supabase, supabaseConfigError } from './supabaseClient'
 import { formatSpainTime } from './time'
 import { cleanPreview, highlight } from './format'
 import StatsBar from './StatsBar'
+import { isUnread, markSeen } from './unread'
 
 // Tamaño de cada bloque al paginar. Supabase/PostgREST limita cada
 // respuesta a 1000 filas, así que traemos la tabla completa en páginas
@@ -104,6 +105,11 @@ export default function ChatList({ onSelect, selectedId }) {
 
   const clearFilters = () => { setSearchTerm(''); setDateFilter(''); setCategoryFilter('ALL') }
 
+  const openSession = (s) => {
+    markSeen(s)
+    onSelect(s.session_id)
+  }
+
   return (
     <div className="chat-list">
 
@@ -162,26 +168,30 @@ export default function ChatList({ onSelect, selectedId }) {
       )}
 
       {/* --- LISTA DE RESULTADOS --- */}
-      {!error && !loading && filteredSessions.map(s => (
-        <div
-          key={s.session_id}
-          className={`chat-item ${selectedId === s.session_id ? 'active' : ''}`}
-          onClick={() => onSelect(s.session_id)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(s.session_id) } }}
-        >
-          <div className="chat-id">{highlight(s.session_id, searchTerm)}</div>
-          <div className="chat-preview">{highlight(cleanPreview(getLastContent(s.conversation)), searchTerm)}</div>
-          <div className="chat-meta">
-            <span className={getBadgeClass(s.category)}>{getBadgeLabel(s.category)}</span>
-            <span className="meta-right">
-              <span className="msg-count">{getMessageCount(s.conversation)} msg</span>
-              <span>{formatSpainTime(s.updated_at)}</span>
-            </span>
+      {!error && !loading && filteredSessions.map(s => {
+        const unread = selectedId !== s.session_id && isUnread(s)
+        return (
+          <div
+            key={s.session_id}
+            className={`chat-item ${selectedId === s.session_id ? 'active' : ''} ${unread ? 'unread' : ''}`}
+            onClick={() => openSession(s)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSession(s) } }}
+          >
+            {unread && <span className="unread-dot" aria-label="No leído" />}
+            <div className="chat-id">{highlight(s.session_id, searchTerm)}</div>
+            <div className="chat-preview">{highlight(cleanPreview(getLastContent(s.conversation)), searchTerm)}</div>
+            <div className="chat-meta">
+              <span className={getBadgeClass(s.category)}>{getBadgeLabel(s.category)}</span>
+              <span className="meta-right">
+                <span className="msg-count">{getMessageCount(s.conversation)} msg</span>
+                <span>{formatSpainTime(s.updated_at)}</span>
+              </span>
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
 
       {!error && !loading && filteredSessions.length === 0 && (
         <div className="list-state empty-state">

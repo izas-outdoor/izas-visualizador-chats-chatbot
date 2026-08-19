@@ -102,6 +102,23 @@ body {
   border-left: 4px solid var(--brand-accent);
 }
 
+/* Punto verde para chats con actividad nueva desde la última vez que se abrieron */
+.chat-item.unread .chat-preview {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.unread-dot {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand-accent);
+  box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.25);
+}
+
 .chat-id {
   font-family: 'SF Mono', 'Menlo', monospace;
   font-size: 11px;
