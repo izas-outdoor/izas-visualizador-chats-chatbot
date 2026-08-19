@@ -199,6 +199,50 @@ body {
   margin: 0;
 }
 
+.results-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--sidebar-muted);
+  opacity: 0.8;
+}
+
+/* Chips de filtro rápido (Hoy / Derivación humana) */
+.quick-filters {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.quick-filter-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--sidebar-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--sidebar-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.quick-filter-chip:hover {
+  border-color: var(--brand-light);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.quick-filter-chip.active {
+  background: var(--brand-accent);
+  border-color: var(--brand-accent);
+  color: var(--brand-dark);
+}
+
+.quick-filter-chip.urgent.active {
+  background: var(--badge-urgent-text);
+  border-color: var(--badge-urgent-text);
+  color: white;
+}
+
 /* Contenedor de los filtros para que tengan espacio entre ellos */
 .sidebar-controls {
   display: flex;

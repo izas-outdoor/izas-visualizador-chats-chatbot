@@ -105,6 +105,17 @@ export default function ChatList({ onSelect, selectedId }) {
 
   const clearFilters = () => { setSearchTerm(''); setDateFilter(''); setCategoryFilter('ALL') }
 
+  // Fecha de hoy en formato YYYY-MM-DD (huso horario local), igual que el <input type="date">
+  const todayStr = useMemo(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }, [])
+
+  const toggleToday = () => setDateFilter(dateFilter === todayStr ? '' : todayStr)
+  const toggleDerivacion = () => setCategoryFilter(categoryFilter === 'DERIVACION_HUMANA' ? 'ALL' : 'DERIVACION_HUMANA')
+
+  const hasActiveFilters = searchTerm || dateFilter || categoryFilter !== 'ALL'
+
   const openSession = (s) => {
     markSeen(s)
     onSelect(s.session_id)
@@ -115,9 +126,31 @@ export default function ChatList({ onSelect, selectedId }) {
 
       {/* --- HEADER CON CONTROLES --- */}
       <div className="sidebar-header">
-        <h3 className="sidebar-title">Bandeja de entrada</h3>
+        <h3 className="sidebar-title">
+          Bandeja de entrada
+          {hasActiveFilters && !loading && (
+            <span className="results-count"> · {filteredSessions.length} de {sessions.length}</span>
+          )}
+        </h3>
 
         <StatsBar sessions={sessions} />
+
+        <div className="quick-filters">
+          <button
+            type="button"
+            className={`quick-filter-chip ${dateFilter === todayStr ? 'active' : ''}`}
+            onClick={toggleToday}
+          >
+            Hoy
+          </button>
+          <button
+            type="button"
+            className={`quick-filter-chip urgent ${categoryFilter === 'DERIVACION_HUMANA' ? 'active' : ''}`}
+            onClick={toggleDerivacion}
+          >
+            🔴 Derivación
+          </button>
+        </div>
 
         <div className="sidebar-controls">
           <input
