@@ -1,9 +1,22 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { supabase, supabaseConfigError } from './supabaseClient'
-import { formatSpainTime } from './time'
+import { formatSpainTime, getDateLabel, isDifferentDay } from './time'
 import { cleanPreview, highlight } from './format'
 import StatsBar from './StatsBar'
 import { isUnread, markSeen } from './unread'
+
+// Color estable por categoría (aparte de la urgente, que siempre es roja).
+// Mismo nombre de categoría -> mismo tono siempre, calculado por hash simple.
+function categoryColor(cat) {
+  let hash = 0
+  for (let i = 0; i < cat.length; i++) hash = cat.charCodeAt(i) + ((hash << 5) - hash)
+  const hue = Math.abs(hash) % 360
+  return {
+    background: `hsla(${hue}, 65%, 55%, 0.18)`,
+    color: `hsl(${hue}, 70%, 72%)`,
+    borderColor: `hsla(${hue}, 65%, 55%, 0.4)`
+  }
+}
 
 // Tamaño de cada bloque al paginar. Supabase/PostgREST limita cada
 // respuesta a 1000 filas, así que traemos la tabla completa en páginas
@@ -100,8 +113,10 @@ export default function ChatList({ onSelect, selectedId }) {
     Array.isArray(conversation) && conversation.length > 0
       ? conversation[conversation.length - 1]?.content
       : ''
-  const getBadgeClass = (cat) => cat?.toUpperCase().includes('HUMANA') ? 'badge urgent' : 'badge general'
+  const isUrgentCat = (cat) => cat?.toUpperCase().includes('HUMANA')
+  const getBadgeClass = (cat) => isUrgentCat(cat) ? 'badge urgent' : 'badge general'
   const getBadgeLabel = (cat) => cat === 'DERIVACION_HUMANA' ? '🔴 Derivación' : (cat || 'Sin etiqueta')
+  const getBadgeStyle = (cat) => (cat && !isUrgentCat(cat)) ? categoryColor(cat) : undefined
 
   const clearFilters = () => { setSearchTerm(''); setDateFilter(''); setCategoryFilter('ALL') }
 
@@ -201,26 +216,35 @@ export default function ChatList({ onSelect, selectedId }) {
       )}
 
       {/* --- LISTA DE RESULTADOS --- */}
-      {!error && !loading && filteredSessions.map(s => {
+      {!error && !loading && filteredSessions.map((s, i) => {
         const unread = selectedId !== s.session_id && isUnread(s)
+        const showDateSeparator = isDifferentDay(s.updated_at, filteredSessions[i - 1]?.updated_at)
+        const dateLabel = showDateSeparator ? getDateLabel(s.updated_at) : null
+
         return (
-          <div
-            key={s.session_id}
-            className={`chat-item ${selectedId === s.session_id ? 'active' : ''} ${unread ? 'unread' : ''}`}
-            onClick={() => openSession(s)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSession(s) } }}
-          >
-            {unread && <span className="unread-dot" aria-label="No leído" />}
-            <div className="chat-id">{highlight(s.session_id, searchTerm)}</div>
-            <div className="chat-preview">{highlight(cleanPreview(getLastContent(s.conversation)), searchTerm)}</div>
-            <div className="chat-meta">
-              <span className={getBadgeClass(s.category)}>{getBadgeLabel(s.category)}</span>
-              <span className="meta-right">
-                <span className="msg-count">{getMessageCount(s.conversation)} msg</span>
-                <span>{formatSpainTime(s.updated_at)}</span>
-              </span>
+          <div key={s.session_id}>
+            {showDateSeparator && dateLabel && (
+              <div className="list-date-separator"><span>{dateLabel}</span></div>
+            )}
+            <div
+              className={`chat-item ${selectedId === s.session_id ? 'active' : ''} ${unread ? 'unread' : ''}`}
+              onClick={() => openSession(s)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSession(s) } }}
+            >
+              {unread && <span className="unread-dot" aria-label="No leído" />}
+              <div className="chat-id">{highlight(s.session_id, searchTerm)}</div>
+              <div className="chat-preview">{highlight(cleanPreview(getLastContent(s.conversation)), searchTerm)}</div>
+              <div className="chat-meta">
+                <span className={getBadgeClass(s.category)} style={getBadgeStyle(s.category)}>
+                  {getBadgeLabel(s.category)}
+                </span>
+                <span className="meta-right">
+                  <span className="msg-count">{getMessageCount(s.conversation)} msg</span>
+                  <span>{formatSpainTime(s.updated_at)}</span>
+                </span>
+              </div>
             </div>
           </div>
         )

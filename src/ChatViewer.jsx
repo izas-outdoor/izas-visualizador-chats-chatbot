@@ -1,12 +1,20 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from './supabaseClient'
 import { splitSystemContext, renderRichText } from './format'
+import { getDateLabel, isDifferentDay } from './time'
+
+// A partir de este nº de caracteres, el mensaje se colapsa con un "Ver más".
+const COLLAPSE_THRESHOLD = 500
 
 export default function ChatViewer({ sessionId, onBack, className }) {
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [copied, setCopied] = useState(false)
+  const [expanded, setExpanded] = useState(() => new Set())
+  const [showJumpToBottom, setShowJumpToBottom] = useState(false)
   const bottomRef = useRef(null)
+  const containerRef = useRef(null)
 
   const fetchConversation = useCallback(async () => {
     setLoading(true)
@@ -28,6 +36,8 @@ export default function ChatViewer({ sessionId, onBack, className }) {
 
   useEffect(() => {
     if (sessionId) fetchConversation()
+    setExpanded(new Set())
+    setShowJumpToBottom(false)
   }, [sessionId, fetchConversation])
 
   useEffect(() => {
@@ -39,22 +49,32 @@ export default function ChatViewer({ sessionId, onBack, className }) {
     return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
-  const getDateLabel = (isoString) => {
-    if (!isoString) return null
-    const date = new Date(isoString)
-    const today = new Date()
-    const yesterday = new Date()
-    yesterday.setDate(today.getDate() - 1)
-
-    if (date.toDateString() === today.toDateString()) return 'Hoy'
-    if (date.toDateString() === yesterday.toDateString()) return 'Ayer'
-    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+  const toggleExpanded = (i) => {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      next.has(i) ? next.delete(i) : next.add(i)
+      return next
+    })
   }
 
-  const isDifferentDay = (currentIso, prevIso) => {
-    if (!currentIso) return false
-    if (!prevIso) return true
-    return new Date(currentIso).toDateString() !== new Date(prevIso).toDateString()
+  const handleScroll = () => {
+    const el = containerRef.current
+    if (!el) return
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    setShowJumpToBottom(distanceFromBottom > 200)
+  }
+
+  const scrollToBottom = () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+
+  const copySessionId = () => {
+    navigator.clipboard.writeText(sessionId)
+      .then(() => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1500)
+      })
+      .catch(() => {
+        // Permisos de portapapeles bloqueados o navegador sin soporte: no rompemos la UI.
+      })
   }
 
   if (!sessionId) {
@@ -73,13 +93,16 @@ export default function ChatViewer({ sessionId, onBack, className }) {
           <h2 style={{ fontFamily: 'monospace', fontSize: '13px', color: '#64748b' }}>
             ID: {sessionId}
           </h2>
+          <button onClick={copySessionId} className="copy-id-btn" aria-label="Copiar ID de sesión" title="Copiar ID">
+            {copied ? '✓' : '⧉'}
+          </button>
         </div>
         {!loading && !error && (
           <span className="header-count">{messages.length} mensajes</span>
         )}
       </div>
 
-      <div className="messages-container">
+      <div className="messages-container" ref={containerRef} onScroll={handleScroll}>
         {loading && (
           <div className="viewer-state">
             <div className="spinner" />
@@ -97,7 +120,9 @@ export default function ChatViewer({ sessionId, onBack, className }) {
         {!loading && !error && messages.map((msg, i) => {
           const showDateSeparator = isDifferentDay(msg.timestamp, messages[i - 1]?.timestamp)
           const dateLabel = showDateSeparator ? getDateLabel(msg.timestamp) : null
-          const { products } = splitSystemContext(msg.content)
+          const { text, products } = splitSystemContext(msg.content)
+          const isLong = text.length > COLLAPSE_THRESHOLD
+          const isExpanded = expanded.has(i)
 
           return (
             <div key={i} style={{ width: '100%' }}>
@@ -110,9 +135,15 @@ export default function ChatViewer({ sessionId, onBack, className }) {
 
               <div className={`message ${msg.role === 'user' ? 'user' : 'assistant'}`}>
                 <div className="bubble">
-                  <div className="message-text">
+                  <div className={`message-text ${isLong && !isExpanded ? 'clamped' : ''}`}>
                     {renderRichText(msg.content)}
                   </div>
+
+                  {isLong && (
+                    <button className="expand-toggle" onClick={() => toggleExpanded(i)}>
+                      {isExpanded ? 'Ver menos' : 'Ver más'}
+                    </button>
+                  )}
 
                   {/* Productos mostrados por el bot (extraídos del contexto de sistema) */}
                   {products.length > 0 && (
@@ -142,6 +173,12 @@ export default function ChatViewer({ sessionId, onBack, className }) {
 
         <div ref={bottomRef} />
       </div>
+
+      {showJumpToBottom && (
+        <button className="jump-to-bottom" onClick={scrollToBottom} aria-label="Ir al último mensaje">
+          ↓
+        </button>
+      )}
     </div>
   )
 }
