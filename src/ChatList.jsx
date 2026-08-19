@@ -4,8 +4,10 @@ import { formatSpainTime } from './time'
 import { cleanPreview, highlight } from './format'
 import StatsBar from './StatsBar'
 
-// Cuántas sesiones traemos como máximo (las más recientes primero).
-const SESSION_LIMIT = 300
+// Tamaño de cada bloque al paginar. Supabase/PostgREST limita cada
+// respuesta a 1000 filas, así que traemos la tabla completa en páginas
+// en vez de un límite fijo (que dejaba fuera sesiones antiguas sin avisar).
+const PAGE_SIZE = 1000
 
 export default function ChatList({ onSelect, selectedId }) {
   const [sessions, setSessions] = useState([])
@@ -19,18 +21,30 @@ export default function ChatList({ onSelect, selectedId }) {
 
   const fetchSessions = useCallback(async () => {
     if (supabaseConfigError) { setLoading(false); return }
-    const { data, error } = await supabase
-      .from('chat_sessions')
-      .select('session_id, category, updated_at, conversation')
-      .order('updated_at', { ascending: false })
-      .limit(SESSION_LIMIT)
 
-    if (error) {
-      setError('No se pudieron cargar los chats: ' + error.message)
-    } else {
-      setError(null)
-      setSessions(data || [])
+    let all = []
+    let from = 0
+
+    while (true) {
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .select('session_id, category, updated_at, conversation')
+        .order('updated_at', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1)
+
+      if (error) {
+        setError('No se pudieron cargar los chats: ' + error.message)
+        setLoading(false)
+        return
+      }
+
+      all = all.concat(data)
+      if (data.length < PAGE_SIZE) break
+      from += PAGE_SIZE
     }
+
+    setError(null)
+    setSessions(all)
     setLoading(false)
   }, [])
 
