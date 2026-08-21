@@ -32,6 +32,7 @@ export default function ChatList({ onSelect, selectedId }) {
   const [categoryFilter, setCategoryFilter] = useState('ALL')
   const [searchTerm, setSearchTerm] = useState('')
   const [dateFilter, setDateFilter] = useState('')
+  const [unreadOnly, setUnreadOnly] = useState(false)
 
   const fetchSessions = useCallback(async () => {
     if (supabaseConfigError) { setLoading(false); return }
@@ -103,9 +104,11 @@ export default function ChatList({ onSelect, selectedId }) {
         session.session_id.toLowerCase().includes(term) ||
         session.conversation?.some(msg => msg.content && msg.content.toLowerCase().includes(term))
 
-      return matchCategory && matchDate && matchSearch
+      const matchUnread = !unreadOnly || (session.session_id !== selectedId && isUnread(session))
+
+      return matchCategory && matchDate && matchSearch && matchUnread
     })
-  }, [sessions, categoryFilter, dateFilter, searchTerm])
+  }, [sessions, categoryFilter, dateFilter, searchTerm, unreadOnly, selectedId])
 
   // Helpers visuales
   const getMessageCount = (conversation) => Array.isArray(conversation) ? conversation.length : 0
@@ -118,7 +121,7 @@ export default function ChatList({ onSelect, selectedId }) {
   const getBadgeLabel = (cat) => cat === 'DERIVACION_HUMANA' ? '🔴 Derivación' : (cat || 'Sin etiqueta')
   const getBadgeStyle = (cat) => (cat && !isUrgentCat(cat)) ? categoryColor(cat) : undefined
 
-  const clearFilters = () => { setSearchTerm(''); setDateFilter(''); setCategoryFilter('ALL') }
+  const clearFilters = () => { setSearchTerm(''); setDateFilter(''); setCategoryFilter('ALL'); setUnreadOnly(false) }
 
   // Fecha de hoy en formato YYYY-MM-DD (huso horario local), igual que el <input type="date">
   const todayStr = useMemo(() => {
@@ -128,8 +131,9 @@ export default function ChatList({ onSelect, selectedId }) {
 
   const toggleToday = () => setDateFilter(dateFilter === todayStr ? '' : todayStr)
   const toggleDerivacion = () => setCategoryFilter(categoryFilter === 'DERIVACION_HUMANA' ? 'ALL' : 'DERIVACION_HUMANA')
+  const toggleUnread = () => setUnreadOnly(u => !u)
 
-  const hasActiveFilters = searchTerm || dateFilter || categoryFilter !== 'ALL'
+  const hasActiveFilters = searchTerm || dateFilter || categoryFilter !== 'ALL' || unreadOnly
 
   const openSession = (s) => {
     markSeen(s)
@@ -164,6 +168,13 @@ export default function ChatList({ onSelect, selectedId }) {
             onClick={toggleDerivacion}
           >
             🔴 Derivación
+          </button>
+          <button
+            type="button"
+            className={`quick-filter-chip ${unreadOnly ? 'active' : ''}`}
+            onClick={toggleUnread}
+          >
+            🟢 No leídos
           </button>
         </div>
 
