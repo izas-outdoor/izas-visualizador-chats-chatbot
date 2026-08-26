@@ -3,15 +3,23 @@
    - Separa el "ruido" que el backend añade a los mensajes del asistente:
        · "\n[CONTEXTO SISTEMA: Productos mostrados: ...]"  -> lista de productos
        · "[Botones Mostrados]" y similares                 -> marcas internas
+       · "[AGENTE_HUMANO] "                                -> respuesta de agente
    - Renderiza el texto limpio con negritas (**), enlaces markdown [t](url)
      y URLs sueltas, de forma segura (React escapa el texto por defecto).
    ========================================================================== */
 
+// Debe coincidir exactamente con AGENT_MARKER en chatbotWeb/backend/server.js
+export const AGENT_MARKER = '[AGENTE_HUMANO] '
+
 // Extrae los productos mostrados (si los hay) y devuelve el texto sin esa cola.
+// También detecta si el mensaje lo escribió un agente humano en vez del bot.
 export function splitSystemContext(rawText) {
-  if (!rawText) return { text: '', products: [] };
-  let text = String(rawText);
-  let products = [];
+  if (!rawText) return { text: '', products: [], isAgent: false }
+  let text = String(rawText)
+  let products = []
+
+  const isAgent = text.startsWith(AGENT_MARKER)
+  if (isAgent) text = text.slice(AGENT_MARKER.length)
 
   // [CONTEXTO SISTEMA: Productos mostrados: A, B, C]
   const ctxRegex = /\n?\[CONTEXTO SISTEMA:[^\]]*Productos mostrados:\s*([^\]]*)\]/i;
@@ -24,7 +32,7 @@ export function splitSystemContext(rawText) {
   // Otras marcas internas que no aportan al lector.
   text = text.replace(/\s*\[Botones Mostrados\]\s*/gi, ' ').trim();
 
-  return { text, products };
+  return { text, products, isAgent };
 }
 
 // Preview corto y limpio para la lista (sin el ruido del sistema).

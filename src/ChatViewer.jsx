@@ -6,6 +6,8 @@ import { getDateLabel, isDifferentDay } from './time'
 // A partir de este nº de caracteres, el mensaje se colapsa con un "Ver más".
 const COLLAPSE_THRESHOLD = 500
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://izas-chatbot-backend.onrender.com'
+
 export default function ChatViewer({ sessionId, onBack, className }) {
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
@@ -13,6 +15,9 @@ export default function ChatViewer({ sessionId, onBack, className }) {
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(() => new Set())
   const [showJumpToBottom, setShowJumpToBottom] = useState(false)
+  const [replyText, setReplyText] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState(null)
   const bottomRef = useRef(null)
   const containerRef = useRef(null)
 
@@ -43,6 +48,8 @@ export default function ChatViewer({ sessionId, onBack, className }) {
     if (sessionId) fetchConversation()
     setExpanded(new Set())
     setShowJumpToBottom(false)
+    setReplyText('')
+    setSendError(null)
   }, [sessionId, fetchConversation])
 
   // Live-update: si llega un mensaje nuevo a la conversación abierta (p.ej. el
@@ -87,6 +94,43 @@ export default function ChatViewer({ sessionId, onBack, className }) {
   }
 
   const scrollToBottom = () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+
+  const sendReply = async (e) => {
+    e.preventDefault()
+    const content = replyText.trim()
+    if (!content || sending) return
+
+    setSending(true)
+    setSendError(null)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Sesión caducada, vuelve a entrar.')
+
+      const res = await fetch(`${BACKEND_URL}/api/chat/agent-reply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ session_id: sessionId, content })
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || `Error ${res.status}`)
+      }
+
+      setReplyText('')
+      // El mensaje llega solo vía realtime (suscripción de arriba), pero
+      // refrescamos también por si acaso el evento tardase o se perdiera.
+      fetchConversation({ silent: true })
+    } catch (err) {
+      setSendError(err.message || 'No se pudo enviar la respuesta.')
+    } finally {
+      setSending(false)
+    }
+  }
 
   const copySessionId = () => {
     navigator.clipboard.writeText(sessionId)
@@ -142,7 +186,7 @@ export default function ChatViewer({ sessionId, onBack, className }) {
         {!loading && !error && messages.map((msg, i) => {
           const showDateSeparator = isDifferentDay(msg.timestamp, messages[i - 1]?.timestamp)
           const dateLabel = showDateSeparator ? getDateLabel(msg.timestamp) : null
-          const { text, products } = splitSystemContext(msg.content)
+          const { text, products, isAgent } = splitSystemContext(msg.content)
           const isLong = text.length > COLLAPSE_THRESHOLD
           const isExpanded = expanded.has(i)
 
@@ -156,7 +200,8 @@ export default function ChatViewer({ sessionId, onBack, className }) {
               )}
 
               <div className={`message ${msg.role === 'user' ? 'user' : 'assistant'}`}>
-                <div className="bubble">
+                <div className={`bubble ${isAgent ? 'agent-bubble' : ''}`}>
+                  {isAgent && <div className="agent-label">Agente</div>}
                   <div className={`message-text ${isLong && !isExpanded ? 'clamped' : ''}`}>
                     {renderRichText(msg.content)}
                   </div>
@@ -201,6 +246,28 @@ export default function ChatViewer({ sessionId, onBack, className }) {
           ↓
         </button>
       )}
+
+      <form className="reply-box" onSubmit={sendReply}>
+        {sendError && <p className="reply-error">⚠️ {sendError}</p>}
+        <div className="reply-row">
+          <textarea
+            className="reply-input"
+            placeholder="Responder como agente…"
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                sendReply(e)
+              }
+            }}
+            rows={1}
+          />
+          <button type="submit" className="reply-send-btn" disabled={sending || !replyText.trim()}>
+            {sending ? '…' : 'Enviar'}
+          </button>
+        </div>
+      </form>
     </div>
   )
 }
