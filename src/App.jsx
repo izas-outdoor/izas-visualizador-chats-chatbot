@@ -6,8 +6,12 @@ import { supabase, supabaseConfigError } from './supabaseClient'
 import './App.css' // Asegúrate de importar tu CSS
 
 export default function App() {
-  // Corregido: Usamos 'selectedId' consistentemente
-  const [selectedId, setSelectedId] = useState(null)
+  // Enlace directo desde el email de aviso: ?session=<id> abre ese chat ya
+  // seleccionado, sin tener que buscarlo a mano en la bandeja.
+  const [selectedId, setSelectedId] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('session') || null
+  })
 
   // undefined = comprobando si hay sesión, null = sin sesión (mostrar login)
   const [session, setSession] = useState(undefined)

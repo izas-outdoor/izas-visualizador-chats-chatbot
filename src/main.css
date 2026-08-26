@@ -723,6 +723,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+/* Derivación ya cerrada por el agente: mismo verde de marca, sin urgencia */
+.badge.resolved {
+  background: rgba(46, 204, 113, 0.12);
+  color: #16a34a;
+  border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
 /* ───── BOTÓN COPIAR ID DE SESIÓN ───── */
 .copy-id-btn {
   background: none;

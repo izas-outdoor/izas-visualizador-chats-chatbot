@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { supabase, supabaseConfigError } from './supabaseClient'
 import { formatSpainTime, getDateLabel, isDifferentDay } from './time'
-import { cleanPreview, highlight } from './format'
+import { cleanPreview, highlight, AGENT_MARKER, AGENT_CLOSE_MARKER } from './format'
 import StatsBar from './StatsBar'
 import { isUnread, markSeen } from './unread'
 
@@ -123,9 +123,41 @@ export default function ChatList({ onSelect, selectedId, onSignOut }) {
       ? conversation[conversation.length - 1]?.content
       : ''
   const isUrgentCat = (cat) => cat?.toUpperCase().includes('HUMANA')
-  const getBadgeClass = (cat) => isUrgentCat(cat) ? 'badge urgent' : 'badge general'
-  const getBadgeLabel = (cat) => cat === 'DERIVACION_HUMANA' ? '🔴 Derivación' : (cat || 'Sin etiqueta')
-  const getBadgeStyle = (cat) => (cat && !isUrgentCat(cat)) ? categoryColor(cat) : undefined
+
+  // Para una derivación, mira el último marcador (de agente o de cierre) en
+  // la conversación para saber si sigue abierta o ya se resolvió. Devuelve
+  // null si la sesión no es una derivación.
+  const getHandoffState = (session) => {
+    if (!isUrgentCat(session.category)) return null
+    const conv = session.conversation
+    if (!Array.isArray(conv)) return 'abierta'
+    for (let i = conv.length - 1; i >= 0; i--) {
+      const content = conv[i]?.content
+      if (typeof content !== 'string') continue
+      if (content.startsWith(AGENT_CLOSE_MARKER)) return 'resuelta'
+      if (content.startsWith(AGENT_MARKER)) return 'abierta'
+    }
+    return 'abierta'
+  }
+
+  const getBadgeClass = (session) => {
+    const handoff = getHandoffState(session)
+    if (handoff === 'resuelta') return 'badge resolved'
+    if (handoff === 'abierta') return 'badge urgent'
+    return isUrgentCat(session.category) ? 'badge urgent' : 'badge general'
+  }
+
+  const getBadgeLabel = (session) => {
+    const handoff = getHandoffState(session)
+    if (handoff === 'resuelta') return '✅ Resuelta'
+    if (handoff === 'abierta') return '🔴 Derivación'
+    return session.category || 'Sin etiqueta'
+  }
+
+  const getBadgeStyle = (session) => {
+    if (getHandoffState(session)) return undefined
+    return (session.category && !isUrgentCat(session.category)) ? categoryColor(session.category) : undefined
+  }
 
   const clearFilters = () => { setSearchTerm(''); setDateFilter(''); setCategoryFilter('ALL'); setUnreadOnly(false) }
 
@@ -261,8 +293,8 @@ export default function ChatList({ onSelect, selectedId, onSignOut }) {
               <div className="chat-id">{highlight(s.session_id, searchTerm)}</div>
               <div className="chat-preview">{highlight(cleanPreview(getLastContent(s.conversation)), searchTerm)}</div>
               <div className="chat-meta">
-                <span className={getBadgeClass(s.category)} style={getBadgeStyle(s.category)}>
-                  {getBadgeLabel(s.category)}
+                <span className={getBadgeClass(s)} style={getBadgeStyle(s)}>
+                  {getBadgeLabel(s)}
                 </span>
                 <span className="meta-right">
                   <span className="msg-count">{getMessageCount(s.conversation)} msg</span>
