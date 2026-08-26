@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { supabase } from './supabaseClient'
-import { splitSystemContext, renderRichText } from './format'
+import { splitSystemContext, renderRichText, AGENT_MARKER, AGENT_CLOSE_MARKER } from './format'
 import { getDateLabel, isDifferentDay } from './time'
 
 // A partir de este nº de caracteres, el mensaje se colapsa con un "Ver más".
@@ -95,6 +95,27 @@ export default function ChatViewer({ sessionId, onBack, className }) {
 
   const scrollToBottom = () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
 
+  // Compartida por "responder" y "devolver al bot": ambas llaman a un
+  // endpoint del backend con el token de la sesión de agente logueada.
+  const callAgentEndpoint = async (path, body) => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) throw new Error('Sesión caducada, vuelve a entrar.')
+
+    const res = await fetch(`${BACKEND_URL}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify(body)
+    })
+
+    if (!res.ok) {
+      const responseBody = await res.json().catch(() => ({}))
+      throw new Error(responseBody.error || `Error ${res.status}`)
+    }
+  }
+
   const sendReply = async (e) => {
     e.preventDefault()
     const content = replyText.trim()
@@ -104,29 +125,39 @@ export default function ChatViewer({ sessionId, onBack, className }) {
     setSendError(null)
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('Sesión caducada, vuelve a entrar.')
-
-      const res = await fetch(`${BACKEND_URL}/api/chat/agent-reply`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ session_id: sessionId, content })
-      })
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || `Error ${res.status}`)
-      }
-
+      await callAgentEndpoint('/api/chat/agent-reply', { session_id: sessionId, content })
       setReplyText('')
       // El mensaje llega solo vía realtime (suscripción de arriba), pero
       // refrescamos también por si acaso el evento tardase o se perdiera.
       fetchConversation({ silent: true })
     } catch (err) {
       setSendError(err.message || 'No se pudo enviar la respuesta.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  // Detecta, a partir del último mensaje marcado (de agente o de cierre), si
+  // esta conversación sigue derivada a un agente ahora mismo.
+  const isHandedOff = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const content = messages[i]?.content
+      if (typeof content !== 'string') continue
+      if (content.startsWith(AGENT_CLOSE_MARKER)) return false
+      if (content.startsWith(AGENT_MARKER)) return true
+    }
+    return false
+  }, [messages])
+
+  const closeAgentSession = async () => {
+    if (sending) return
+    setSending(true)
+    setSendError(null)
+    try {
+      await callAgentEndpoint('/api/chat/agent-close', { session_id: sessionId })
+      fetchConversation({ silent: true })
+    } catch (err) {
+      setSendError(err.message || 'No se pudo devolver la conversación al bot.')
     } finally {
       setSending(false)
     }
@@ -186,9 +217,22 @@ export default function ChatViewer({ sessionId, onBack, className }) {
         {!loading && !error && messages.map((msg, i) => {
           const showDateSeparator = isDifferentDay(msg.timestamp, messages[i - 1]?.timestamp)
           const dateLabel = showDateSeparator ? getDateLabel(msg.timestamp) : null
-          const { text, products, isAgent } = splitSystemContext(msg.content)
+          const { text, products, isAgent, isAgentClose } = splitSystemContext(msg.content)
           const isLong = text.length > COLLAPSE_THRESHOLD
           const isExpanded = expanded.has(i)
+
+          if (isAgentClose) {
+            return (
+              <div key={i} style={{ width: '100%' }}>
+                {showDateSeparator && dateLabel && (
+                  <div className="date-separator">
+                    <span>{dateLabel}</span>
+                  </div>
+                )}
+                <div className="handoff-close-note">🔓 {text}</div>
+              </div>
+            )
+          }
 
           return (
             <div key={i} style={{ width: '100%' }}>
@@ -249,6 +293,16 @@ export default function ChatViewer({ sessionId, onBack, className }) {
 
       <form className="reply-box" onSubmit={sendReply}>
         {sendError && <p className="reply-error">⚠️ {sendError}</p>}
+        {isHandedOff && (
+          <button
+            type="button"
+            className="close-handoff-btn"
+            onClick={closeAgentSession}
+            disabled={sending}
+          >
+            🔓 Devolver conversación al bot
+          </button>
+        )}
         <div className="reply-row">
           <textarea
             className="reply-input"

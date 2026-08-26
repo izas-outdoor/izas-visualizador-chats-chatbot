@@ -569,6 +569,44 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   color: var(--badge-urgent-text);
 }
 
+.close-handoff-btn {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--brand-accent);
+  background: rgba(46, 204, 113, 0.08);
+  color: var(--brand-dark);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+
+.close-handoff-btn:hover:not(:disabled) {
+  background: rgba(46, 204, 113, 0.18);
+}
+
+.close-handoff-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Nota de sistema cuando se devuelve la conversación del agente al bot */
+.handoff-close-note {
+  display: flex;
+  justify-content: center;
+  margin: 8px auto;
+  font-size: 11px;
+  color: #8a8a8a;
+  text-align: center;
+  padding: 6px 14px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  width: fit-content;
+}
+
 /* ───── MENSAJES (Estilo Burbujas Widget) ───── */
 .message {
   display: flex;

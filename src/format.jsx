@@ -8,18 +8,24 @@
      y URLs sueltas, de forma segura (React escapa el texto por defecto).
    ========================================================================== */
 
-// Debe coincidir exactamente con AGENT_MARKER en chatbotWeb/backend/server.js
+// Deben coincidir exactamente con AGENT_MARKER / AGENT_CLOSE_MARKER en
+// chatbotWeb/backend/server.js
 export const AGENT_MARKER = '[AGENTE_HUMANO] '
+export const AGENT_CLOSE_MARKER = '[AGENTE_CIERRA] '
 
 // Extrae los productos mostrados (si los hay) y devuelve el texto sin esa cola.
-// También detecta si el mensaje lo escribió un agente humano en vez del bot.
+// También detecta si el mensaje lo escribió un agente humano en vez del bot,
+// o si es el mensaje que cierra la derivación (devuelve al bot).
 export function splitSystemContext(rawText) {
-  if (!rawText) return { text: '', products: [], isAgent: false }
+  if (!rawText) return { text: '', products: [], isAgent: false, isAgentClose: false }
   let text = String(rawText)
   let products = []
 
   const isAgent = text.startsWith(AGENT_MARKER)
   if (isAgent) text = text.slice(AGENT_MARKER.length)
+
+  const isAgentClose = !isAgent && text.startsWith(AGENT_CLOSE_MARKER)
+  if (isAgentClose) text = text.slice(AGENT_CLOSE_MARKER.length)
 
   // [CONTEXTO SISTEMA: Productos mostrados: A, B, C]
   const ctxRegex = /\n?\[CONTEXTO SISTEMA:[^\]]*Productos mostrados:\s*([^\]]*)\]/i;
@@ -32,7 +38,7 @@ export function splitSystemContext(rawText) {
   // Otras marcas internas que no aportan al lector.
   text = text.replace(/\s*\[Botones Mostrados\]\s*/gi, ' ').trim();
 
-  return { text, products, isAgent };
+  return { text, products, isAgent, isAgentClose };
 }
 
 // Preview corto y limpio para la lista (sin el ruido del sistema).
