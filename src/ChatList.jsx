@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { supabase, supabaseConfigError } from './supabaseClient'
 import { formatSpainTime, getDateLabel, isDifferentDay } from './time'
 import { cleanPreview, highlight } from './format'
@@ -23,7 +23,7 @@ function categoryColor(cat) {
 // en vez de un límite fijo (que dejaba fuera sesiones antiguas sin avisar).
 const PAGE_SIZE = 1000
 
-export default function ChatList({ onSelect, selectedId }) {
+export default function ChatList({ onSelect, selectedId, onSignOut }) {
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(supabaseConfigError)
@@ -63,12 +63,21 @@ export default function ChatList({ onSelect, selectedId }) {
     setLoading(false)
   }, [])
 
-  // Debounce: si llegan varios cambios realtime seguidos, refrescamos una vez.
-  const debounceRef = useRef(null)
-  const debouncedFetch = useCallback(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(fetchSessions, 600)
-  }, [fetchSessions])
+  // Aplica el cambio puntual que llega por realtime en vez de recargar toda la
+  // tabla (que con miles de chats y sus conversaciones completas es caro).
+  const applyRealtimeChange = useCallback((payload) => {
+    setSessions(prev => {
+      if (payload.eventType === 'DELETE') {
+        return prev.filter(s => s.session_id !== payload.old.session_id)
+      }
+
+      const row = payload.new
+      const idx = prev.findIndex(s => s.session_id === row.session_id)
+      const next = idx === -1 ? [...prev, row] : prev.map((s, i) => (i === idx ? row : s))
+
+      return next.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+    })
+  }, [])
 
   useEffect(() => {
     fetchSessions()
@@ -76,14 +85,11 @@ export default function ChatList({ onSelect, selectedId }) {
 
     const subscription = supabase
       .channel('public:chat_sessions')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_sessions' }, debouncedFetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_sessions' }, applyRealtimeChange)
       .subscribe()
 
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      supabase.removeChannel(subscription)
-    }
-  }, [fetchSessions, debouncedFetch])
+    return () => supabase.removeChannel(subscription)
+  }, [fetchSessions, applyRealtimeChange])
 
   // Categorías únicas para el selector
   const uniqueCategories = useMemo(() => {
@@ -145,12 +151,19 @@ export default function ChatList({ onSelect, selectedId }) {
 
       {/* --- HEADER CON CONTROLES --- */}
       <div className="sidebar-header">
-        <h3 className="sidebar-title">
-          Bandeja de entrada
-          {hasActiveFilters && !loading && (
-            <span className="results-count"> · {filteredSessions.length} de {sessions.length}</span>
+        <div className="sidebar-title-row">
+          <h3 className="sidebar-title">
+            Bandeja de entrada
+            {hasActiveFilters && !loading && (
+              <span className="results-count"> · {filteredSessions.length} de {sessions.length}</span>
+            )}
+          </h3>
+          {onSignOut && (
+            <button type="button" className="sign-out-btn" onClick={onSignOut} title="Cerrar sesión">
+              ⏻
+            </button>
           )}
-        </h3>
+        </div>
 
         <StatsBar sessions={sessions} />
 
