@@ -16,9 +16,13 @@ export default function ChatViewer({ sessionId, onBack, className }) {
   const bottomRef = useRef(null)
   const containerRef = useRef(null)
 
-  const fetchConversation = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+  // silent=true se usa para los refrescos por realtime: no queremos que la
+  // conversación parpadee con el spinner cada vez que llega un mensaje nuevo.
+  const fetchConversation = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true)
+      setError(null)
+    }
     const { data, error } = await supabase
       .from('chat_sessions')
       .select('conversation')
@@ -27,17 +31,35 @@ export default function ChatViewer({ sessionId, onBack, className }) {
 
     if (error) {
       setError('No se pudo cargar la conversación: ' + error.message)
-      setMessages([])
+      if (!silent) setMessages([])
     } else {
+      setError(null)
       setMessages(data?.conversation || [])
     }
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [sessionId])
 
   useEffect(() => {
     if (sessionId) fetchConversation()
     setExpanded(new Set())
     setShowJumpToBottom(false)
+  }, [sessionId, fetchConversation])
+
+  // Live-update: si llega un mensaje nuevo a la conversación abierta (p.ej. el
+  // cliente sigue escribiendo tras una derivación humana), se refresca sola.
+  useEffect(() => {
+    if (!sessionId) return
+
+    const channel = supabase
+      .channel(`chat_session_${sessionId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'chat_sessions', filter: `session_id=eq.${sessionId}` },
+        () => fetchConversation({ silent: true })
+      )
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
   }, [sessionId, fetchConversation])
 
   useEffect(() => {
