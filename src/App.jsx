@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import ChatList from './ChatList'
 import ChatViewer from './ChatViewer'
 import Login from './Login'
+import StatsPage from './StatsPage'
 import { supabase, supabaseConfigError } from './supabaseClient'
 import './App.css' // Asegúrate de importar tu CSS
 
@@ -12,6 +13,10 @@ export default function App() {
     const params = new URLSearchParams(window.location.search)
     return params.get('session') || null
   })
+
+  // 'inbox' = bandeja de chats (comportamiento de siempre), 'stats' = panel
+  // de estadísticas a pantalla completa.
+  const [view, setView] = useState('inbox')
 
   // undefined = comprobando si hay sesión, null = sin sesión (mostrar login)
   const [session, setSession] = useState(undefined)
@@ -42,21 +47,53 @@ export default function App() {
   }
 
   return (
-    <div className="layout">
-      <ChatList
-        onSelect={(id) => setSelectedId(id)}
-        selectedId={selectedId}
-        onSignOut={() => supabase.auth.signOut()}
-      />
+    <div className="app-shell">
+      <div className="app-tabs">
+        <button
+          type="button"
+          className={`app-tab ${view === 'inbox' ? 'active' : ''}`}
+          onClick={() => setView('inbox')}
+        >
+          💬 Bandeja de entrada
+        </button>
+        <button
+          type="button"
+          className={`app-tab ${view === 'stats' ? 'active' : ''}`}
+          onClick={() => setView('stats')}
+        >
+          📊 Estadísticas
+        </button>
+        <button
+          type="button"
+          className="sign-out-btn app-tabs-signout"
+          onClick={() => supabase.auth.signOut()}
+          title="Cerrar sesión"
+        >
+          ⏻
+        </button>
+      </div>
 
-      {/* Pasamos la clase 'mobile-open' como prop en lugar de envolverlo en un div extra.
-        Esto mantiene el CSS Grid/Flexbox limpio.
-      */}
-      <ChatViewer
-        sessionId={selectedId}
-        onBack={() => setSelectedId(null)}
-        className={selectedId ? 'mobile-open' : ''}
-      />
+      <div className="app-body">
+        {view === 'stats' ? (
+          <StatsPage />
+        ) : (
+          <div className="layout">
+            <ChatList
+              onSelect={(id) => setSelectedId(id)}
+              selectedId={selectedId}
+            />
+
+            {/* Pasamos la clase 'mobile-open' como prop en lugar de envolverlo en un div extra.
+              Esto mantiene el CSS Grid/Flexbox limpio.
+            */}
+            <ChatViewer
+              sessionId={selectedId}
+              onBack={() => setSelectedId(null)}
+              className={selectedId ? 'mobile-open' : ''}
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

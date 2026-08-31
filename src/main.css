@@ -50,13 +50,64 @@ body {
   overflow: hidden;
 }
 
-.layout {
-  display: grid;
-  /* CAMBIO IMPORTANTE: */
-  grid-template-columns: 320px minmax(0, 1fr);
+/* ───── SHELL (pestañas Bandeja / Estadísticas + contenido) ───── */
+.app-shell {
+  display: flex;
+  flex-direction: column;
   height: 100vh;
   width: 100vw;
-  /* Aseguramos que el layout ocupe toda la ventana */
+  overflow: hidden;
+}
+
+.app-tabs {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid var(--sidebar-border);
+  padding: 0 12px;
+}
+
+.app-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--sidebar-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.app-tab:hover {
+  color: #ffffff;
+}
+
+.app-tab.active {
+  color: #ffffff;
+  border-bottom-color: var(--brand-accent);
+}
+
+.app-tabs-signout {
+  margin-left: auto;
+}
+
+.app-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  height: 100%;
+  width: 100%;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   /* Evitamos scroll en el layout principal */
 }
@@ -1053,5 +1104,289 @@ mark.hl {
 .chat-item:focus-visible {
   outline: 2px solid var(--brand-accent);
   outline-offset: -2px;
+}
+
+/* =========================================
+   📊 PESTAÑA DE ESTADÍSTICAS
+   ========================================= */
+
+.stats-page {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--chat-bg);
+  overflow: hidden;
+}
+
+.stats-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.stats-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* Los estados de carga/error viven en la superficie clara del panel, no en
+   la oscura del sidebar, así que ajustamos el contraste de .list-state. */
+.stats-body .list-state {
+  color: #6b7280;
+}
+
+.stats-body .list-error {
+  color: #c0392b;
+}
+
+.stats-body .spinner {
+  border-color: rgba(13, 43, 29, 0.12);
+  border-top-color: var(--brand-dark);
+}
+
+/* --- Fila de KPIs --- */
+.stats-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.kpi-tile {
+  flex: 1 1 180px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.kpi-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-dark);
+  line-height: 1.1;
+}
+
+.kpi-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.kpi-alert .kpi-value {
+  color: #ef4444;
+}
+
+/* --- Grid de tarjetas con gráficas --- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 18px;
+}
+
+.stats-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px 20px 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+}
+
+.stats-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.stats-card-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.stats-card-subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.table-toggle-btn {
+  flex-shrink: 0;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  color: #4b5563;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.table-toggle-btn:hover {
+  background: #e5e7eb;
+  border-color: transparent;
+}
+
+.stats-empty {
+  color: #94a3b8;
+  font-size: 13px;
+  padding: 32px 0;
+  text-align: center;
+}
+
+/* --- Tooltip compartido por todas las gráficas Recharts --- */
+.chart-tooltip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 6px 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.chart-tooltip-key {
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.chart-tooltip-value {
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.chart-tooltip-label {
+  color: #6b7280;
+}
+
+/* --- Tabla "gemela" de cada gráfica --- */
+.stats-table-wrap {
+  max-height: 260px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.stats-table th {
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  text-align: left;
+  color: #94a3b8;
+  font-weight: 600;
+  padding: 6px 4px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.stats-table td {
+  padding: 6px 4px;
+  color: var(--text-dark);
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.stats-table td:last-child,
+.stats-table th:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Panel de valoración Sí/No --- */
+.feedback-panel {
+  padding: 8px 0 16px;
+}
+
+.feedback-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.feedback-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.feedback-legend-item i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.ratio-bar {
+  display: flex;
+  gap: 2px;
+  height: 28px;
+  width: 100%;
+}
+
+.ratio-seg {
+  transition: opacity 0.15s;
+}
+
+.ratio-seg:hover {
+  opacity: 0.85;
+}
+
+.ratio-yes {
+  background: #2ecc71;
+  border-radius: 6px 0 0 6px;
+}
+
+.ratio-no {
+  background: #ef4444;
+  border-radius: 0 6px 6px 0;
+}
+
+.ratio-yes:only-child,
+.ratio-no:only-child {
+  border-radius: 6px;
+}
+
+.feedback-total {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+@media (max-width: 900px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .stats-body {
+    padding: 16px;
+  }
 }
 
