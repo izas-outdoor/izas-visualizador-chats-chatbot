@@ -219,7 +219,7 @@ body {
   background: var(--chat-bg);
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   position: relative;
 
   /* AÑADE ESTO: */
@@ -883,7 +883,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   /* 2. La lista ocupa toda la pantalla por defecto */
   .chat-list {
     width: 100%;
-    height: 100vh;
+    height: 100%;
     border-right: none;
     z-index: 1;
   }
