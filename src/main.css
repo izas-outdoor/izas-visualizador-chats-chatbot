@@ -104,6 +104,11 @@ body {
 .layout {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
+  /* minmax(0, 1fr) en vez de la fila implícita "auto": una fila "auto" se
+     dimensiona por el contenido de sus hijos, así que un height:100% en
+     .chat-viewer/.chat-list quedaba indeterminado y crecía con la
+     conversación en vez de quedarse fijo y hacer scroll dentro. */
+  grid-template-rows: minmax(0, 1fr);
   height: 100%;
   width: 100%;
   flex: 1;
@@ -220,6 +225,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   position: relative;
 
   /* AÑADE ESTO: */
